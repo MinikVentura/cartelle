@@ -2,7 +2,8 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define gente 22
+#define gente 23
+#define PARTIDOS_EQUIPO 16
 char criterioOrden[20];
 typedef enum { minutos, partidos, titularidades, goles, minP, amarillas} Criterio;
 
@@ -74,8 +75,8 @@ int cambios7[5] = {45, 58, 58, 69, 85};
 
 /*JORNADA 8*/
 const char *titulares8[] = {"Berna", "Toni", "Izan","Rodrigo", "Samu", "Requejo", "Chicha", "Brian", "Moises", "Jose", "Villa"};
-const char *suplentes8[] = {"Noel", "Mihai", "Conde", "Juvenil", "Gabri V"};
-const char *cambiados8[] = {"Yago", "Rodrigo", "Brian", "Chicha", "Jose"};
+const char *suplentes8[] = {"Yago", "Mihai", "Conde", "Juvenil", "Gabri V"};  
+const char *cambiados8[] = {"Villa", "Rodrigo", "Brian", "Chicha", "Jose"};
 const char *goles8[] = {"Chicha", "Villa", "Chicha", "Yago", "Moises", "Moises", "Izan"};
 const char *amarillas8[] = {"Conde"};
 int cambios8[5] = {45, 61, 61, 71, 76};
@@ -127,6 +128,14 @@ const char *amarillas13[] = {"Rodrigo", "Vasco"};
 const char *goles13[] = {"Samu", "Moises"};
 int cambios13[5] = {45, 62, 62, 74, 89};
 
+/*JORNADA 15*/
+const char *titulares15[] = {"Berna", "Mihai", "Izan","Rodrigo", "Samu", "Gabri V", "Chicha", "Moises", "Yago", "Jose", "Brian"};
+const char *suplentes15[] = {"Conde", "Noel", "Villa", "Juvenil", "Mateo"};
+const char *cambiados15[] = {"Rodrigo", "Gabri V", "Chicha", "Yago", "Mihai"};
+const char *amarillas15[] = {"Rodrigo", "Brian", "Izan"};
+const char *goles15[] = {""};
+int cambios15[5] = {45, 45, 58, 73, 82};
+
 
 
 typedef struct {
@@ -138,6 +147,7 @@ typedef struct {
     int minP;
     int amarillas;
     int rojas;
+    int porcentaje;
 }jugador;
 
 jugador *lJugador[gente];
@@ -167,25 +177,43 @@ void crearJugadores(const char *jugadores[]){
         lJugador[i]->minP = 0;
         lJugador[i]->amarillas = 0;
         lJugador[i]->rojas = 0;
+        lJugador[i]->porcentaje = 0;
     }
 }
 
+
 void printJugadores(void) {
+    printf("\n");
+    printf("Estadísticas de Jugadores - Total %d jugadores  || Ordenado por %s\n", gente, criterioOrden);
+    printf("--------------------------------------------------------------------------------------------\n");
+    printf(" #  Nombre       PJ  Tit   Minutos  Goles   TA   TR   Min/PJ   %%Min\n");
+    printf("--------------------------------------------------------------------------------------------\n");
+
     for (int i = 0; i < gente; i++) {
-        printf("Jugador %2d: %-10s  ", i+1, lJugador[i]->nombre);
-        printf("PJ: %2d  ", lJugador[i]->partidos);
-        printf("Tit: %2d  ", lJugador[i]->titularidades);
-        printf("Min: %4d  ", lJugador[i]->minutos);
-        printf("Goles: %2d  ", lJugador[i]->goles);
-        printf("TA: %2d  ", lJugador[i]->amarillas);
-        printf("TR: %2d  ", lJugador[i]->rojas);
-        printf("Min/Partido: %2d\n", lJugador[i]->minP);
-        
+        jugador *j = lJugador[i];
+
+        // Alineación cuidada:
+        // - Nombre: 12 caracteres (izquierda)
+        // - Números enteros con ancho fijo y alineados a la derecha
+        printf("%2d  %-12s %2d  %3d    %4d    %3d    %2d   %2d    %3d  \t%2d%%\n",
+               i + 1,
+               j->nombre,
+               j->partidos,
+               j->titularidades,
+               j->minutos,
+               j->goles,
+               j->amarillas,
+               j->rojas,
+               j->partidos > 0 ? (j->minutos / j->partidos) : 0,
+               j->porcentaje
+        );
     }
+
+    printf("--------------------------------------------------------------------------------------------\n");
     printf("\n");
 }
 
-void jornada(const char *titulares[], const char *suplentes[], const char *goles[], int numGoles, int cambios[], const char *cambiados[], const char *amarillas[], int numAmarillas, int numjornada){
+void jornada(const char *titulares[], const char *suplentes[], const char *goles[], int numGoles, int cambios[], const char *cambiados[], const char *amarillas[], int numAmarillas, int numJornada){
 
   int numTitulares = 11;
   int numSuplentes = 5;
@@ -208,7 +236,6 @@ void jornada(const char *titulares[], const char *suplentes[], const char *goles
                 for (int a = 0; a < numAmarillas; a++){
                   if(strcmp(lJugador[j]->nombre, amarillas[a]) == 0)lJugador[j]->amarillas += 1;
                 }
-                lJugador[j]->minP = lJugador[j]->minutos/lJugador[j]->partidos;
                 lJugador[j]->minP = lJugador[j]->minutos/lJugador[j]->partidos;
                 break;
             }
@@ -257,6 +284,12 @@ int comparar(const void *a, const void *b) {
     else if (strcmp(criterioOrden, "amarillas") == 0) {
         return j2->amarillas - j1->amarillas;
     }
+    else if (strcmp(criterioOrden, "rojas") == 0) {
+        return j2->rojas - j1->rojas;
+    }
+    else if (strcmp(criterioOrden, "porcentaje") == 0) {
+        return j2->porcentaje - j1->porcentaje;
+    }
 
     return 0;
 }
@@ -280,29 +313,44 @@ void anomalias(){
   }
 }
 
+void calcularPorcentajes(void) {
+    int minutos_totales_posibles = PARTIDOS_EQUIPO * 90;
+    
+    for (int i = 0; i < gente; i++) {
+        if (minutos_totales_posibles > 0) {
+            lJugador[i]->porcentaje = 
+                (lJugador[i]->minutos * 100LL) / minutos_totales_posibles;
+            // Usamos 100LL para evitar overflow y truncamiento prematuro
+            if(lJugador[i]->porcentaje == 0) lJugador[i]->porcentaje = 1;
+        } else {
+            lJugador[i]->porcentaje = 0;
+        }
+    }
+}
 
 int main(){
-    const char *nombres[] = {"Conde", "Samu", "Rodrigo", "Vasco", "Izan", "Mihai", "Gabri V", "Chicha", "Cristian", "Yago", "Villa", "Jose", "Brian", "Mateo", "Juvenil","Loris", "Moises", "Berna", "Toni", "Gabriel", "Noel", "Daniel"};
+    const char *nombres[] = {"Conde", "Samu", "Rodrigo", "Vasco", "Izan", "Mihai", "Gabri V", "Chicha", "Cristian", "Yago", "Villa", "Jose", "Brian", "Mateo", "Juvenil","Loris", "Moises", "Berna", "Toni", "Gabriel", "Noel", "Daniel", "Requejo"};
     crearJugadores(nombres);
     jornada(titularesC1, suplentesC1, golesC1, 2, cambiosC1, cambiadosC1, amarillasC1, 3, 1);
-    jornada(titulares1, suplentes1, goles1, 1, cambios1, cambiados1, amarillas1, 3, 1);
-    jornada(titulares2, suplentes2, NULL, 0, cambios2, cambiados2, amarillas2, 2, 2);
-    jornada(titulares3, suplentes3, goles3, 4, cambios3, cambiados3, amarillas3, 1, 3);
-    jornada(titulares4, suplentes4, goles4, 1, cambios4, cambiados4, amarillas4, 1, 4);
-    jornada(titulares5, suplentes5, goles5, 1, cambios5, cambiados5, amarillas5, 2, 5);
-    jornada(titulares6, suplentes6, goles6, 6, cambios6, cambiados6, amarillas6, 2, 6);
-    jornada(titulares7, suplentes7, goles7, 4, cambios7, cambiados7, amarillas7, 4, 7);
-    jornada(titulares8, suplentes8, goles8, 7, cambios8, cambiados8, amarillas8, 1, 8);
-    jornada(titulares9, suplentes9, NULL, 0, cambios9, cambiados9, amarillas9, 2, 9);
-    jornada(titulares10, suplentes10, NULL, 0, cambios10, cambiados10, NULL, 0, 10);
-    jornada(titulares11, suplentes11, goles11, 5, cambios11, cambiados11, amarillas11, 1, 11);
-    jornada(titularesC2, suplentesC2, NULL, 0, cambiosC2, cambiadosC2, amarillasC2, 3, 2);
-    jornada(titulares12, suplentes12, NULL, 0, cambios12, cambiados12, amarillas12, 1, 12);
-    jornada(titulares13, suplentes13, goles13, 2, cambios13, cambiados13, amarillas13, 2, 13);
+    jornada(titulares1, suplentes1, goles1, 1, cambios1, cambiados1, amarillas1, 3, 2);
+    jornada(titulares2, suplentes2, NULL, 0, cambios2, cambiados2, amarillas2, 2, 3);
+    jornada(titulares3, suplentes3, goles3, 4, cambios3, cambiados3, amarillas3, 1, 4);
+    jornada(titulares4, suplentes4, goles4, 1, cambios4, cambiados4, amarillas4, 1, 5);
+    jornada(titulares5, suplentes5, goles5, 1, cambios5, cambiados5, amarillas5, 2, 6);
+    jornada(titulares6, suplentes6, goles6, 6, cambios6, cambiados6, amarillas6, 2, 7);
+    jornada(titulares7, suplentes7, goles7, 4, cambios7, cambiados7, amarillas7, 4, 8);
+    jornada(titulares8, suplentes8, goles8, 7, cambios8, cambiados8, amarillas8, 1, 9);
+    jornada(titulares9, suplentes9, NULL, 0, cambios9, cambiados9, amarillas9, 2, 10);
+    jornada(titulares10, suplentes10, NULL, 0, cambios10, cambiados10, NULL, 0, 11);
+    jornada(titulares11, suplentes11, goles11, 5, cambios11, cambiados11, amarillas11, 1, 12);
+    jornada(titularesC2, suplentesC2, NULL, 0, cambiosC2, cambiadosC2, amarillasC2, 3, 13);
+    jornada(titulares12, suplentes12, NULL, 0, cambios12, cambiados12, amarillas12, 1, 14);
+    jornada(titulares13, suplentes13, goles13, 2, cambios13, cambiados13, amarillas13, 2, 15);
+    jornada(titulares15, suplentes15, NULL, 0, cambios15, cambiados15, amarillas15, 3, 16);
     anomalias();
+    calcularPorcentajes();
     ordenar("minutos");
     printJugadores();
 
-    //añadir amarillas
     return 0;
 }
